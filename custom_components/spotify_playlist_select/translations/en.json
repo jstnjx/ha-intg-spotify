@@ -1,0 +1,15 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Spotify Playlist Select",
+        "description": "Enter Spotify developer app credentials and choose playback behavior.",
+        "data": {
+          "client_id": "Client ID",
+          "client_secret": "Client Secret",
+          "play_mode": "When selecting a song"
+        }
+      }
+    }
+  }
+}

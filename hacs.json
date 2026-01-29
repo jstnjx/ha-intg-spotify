@@ -1,0 +1,6 @@
+{
+  "name": "Spotify Playlist Select",
+  "content_in_root": false,
+  "domains": ["spotify_playlist_select"],
+  "homeassistant": "2026.1.0"
+}

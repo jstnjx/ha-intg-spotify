@@ -1,0 +1,12 @@
+{
+  "domain": "spotify_playlist_select",
+  "name": "Spotify Playlist Select",
+  "version": "1.0.0",
+  "documentation": "https://github.com/jstnjx/spotify_playlist_select",
+  "issue_tracker": "https://github.com/jstnjx/spotify_playlist_select/issues",
+  "codeowners": ["@jstnjx"],
+  "config_flow": true,
+  "dependencies": ["application_credentials"],
+  "iot_class": "cloud_polling",
+  "requirements": []
+}
