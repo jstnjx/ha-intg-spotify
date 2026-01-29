@@ -2,8 +2,8 @@
 
 Custom integration for Home Assistant that:
 - Authenticates with Spotify (OAuth2)
-- Reads your playlists + tracks
-- Creates a select entity per playlist (options = tracks)
+- Reads your playlists
+- Creates a select entity per playlist
 - Creates a device select for Spotify Connect devices
 - Selecting a track plays it on the selected device (or queue + play)
 
