@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import timedelta
+from typing import Any
 
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -14,6 +15,7 @@ class SpotifyData:
     devices: list[SpotifyDevice]
     playlists: list[SpotifyPlaylist]
     playlist_tracks: dict[str, list[SpotifyTrack]]
+    player: dict[str, Any] | None
 
 
 class SpotifyCoordinator(DataUpdateCoordinator[SpotifyData]):
@@ -40,6 +42,19 @@ class SpotifyCoordinator(DataUpdateCoordinator[SpotifyData]):
                 playlist_tracks = self.data.playlist_tracks if self.data else {}
 
             devices = await self.api.get_devices()
-            return SpotifyData(devices=devices, playlists=playlists, playlist_tracks=playlist_tracks)
+
+            player: dict[str, Any] | None = None
+            try:
+                player_data = await self.api.get_player()
+                player = player_data if player_data else None
+            except Exception:
+                player = None
+
+            return SpotifyData(
+                devices=devices,
+                playlists=playlists,
+                playlist_tracks=playlist_tracks,
+                player=player,
+            )
         except Exception as err:
             raise UpdateFailed(str(err)) from err

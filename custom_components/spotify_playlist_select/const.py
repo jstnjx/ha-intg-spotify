@@ -14,4 +14,5 @@ SPOTIFY_SCOPES = [
     "user-modify-playback-state",
 ]
 
-PLATFORMS = ["select"]
+PLATFORMS = ["select", "media_player", "sensor"]
+

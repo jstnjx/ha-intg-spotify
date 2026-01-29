@@ -41,14 +41,28 @@ class SpotifyApi:
     async def _request(self, method: str, url: str, **kwargs) -> dict[str, Any]:
         headers = kwargs.pop("headers", {})
         headers["Authorization"] = f"Bearer {self._token}"
-        headers["Content-Type"] = "application/json"
+
+        if "json" in kwargs:
+            headers["Content-Type"] = "application/json"
+
+        if "params" in kwargs and kwargs["params"] is None:
+            kwargs.pop("params")
+
         async with self._session.request(method, url, headers=headers, **kwargs) as resp:
+            if resp.status == 204:
+                return {}
+
             if resp.status >= 400:
                 txt = await resp.text()
                 raise SpotifyApiError(f"{resp.status} {txt}")
-            if resp.status == 204:
+
+            ctype = resp.headers.get("Content-Type", "")
+            if "application/json" not in ctype.lower():
+                await resp.read()
                 return {}
+
             return await resp.json()
+
 
     async def get_playlists(self) -> list[SpotifyPlaylist]:
         url = "https://api.spotify.com/v1/me/playlists?limit=50"
@@ -95,18 +109,6 @@ class SpotifyApi:
             json={"uris": [track_uri]},
         )
 
-    async def start_playlist_context(self, device_id: str, playlist_id: str, track_uri: str) -> None:
-        await self._request(
-            "PUT",
-            f"https://api.spotify.com/v1/me/player/play",
-            params={"device_id": device_id},
-            json={
-                "context_uri": f"spotify:playlist:{playlist_id}",
-                "offset": {"uri": track_uri},
-            },
-        )
-
-
     async def add_to_queue(self, device_id: str, track_uri: str) -> None:
         await self._request(
             "POST",
@@ -114,5 +116,67 @@ class SpotifyApi:
             params={"uri": track_uri, "device_id": device_id},
         )
 
-    async def get_currently_playing(self) -> dict[str, Any]:
+    async def get_player(self) -> dict[str, Any]:
         return await self._request("GET", "https://api.spotify.com/v1/me/player")
+
+    async def pause(self, device_id: str | None = None) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/pause",
+            params={"device_id": device_id} if device_id else None,
+        )
+
+    async def resume(self, device_id: str | None = None) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/play",
+            params={"device_id": device_id} if device_id else None,
+        )
+
+    async def next_track(self, device_id: str | None = None) -> None:
+        await self._request(
+            "POST",
+            "https://api.spotify.com/v1/me/player/next",
+            params={"device_id": device_id} if device_id else None,
+        )
+
+    async def previous_track(self, device_id: str | None = None) -> None:
+        await self._request(
+            "POST",
+            "https://api.spotify.com/v1/me/player/previous",
+            params={"device_id": device_id} if device_id else None,
+        )
+
+    async def set_shuffle(self, shuffle: bool, device_id: str | None = None) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/shuffle",
+            params={"state": "true" if shuffle else "false", **({"device_id": device_id} if device_id else {})},
+        )
+
+    async def set_repeat(self, state: str, device_id: str | None = None) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/repeat",
+            params={"state": state, **({"device_id": device_id} if device_id else {})},
+        )
+
+    async def start_playlist(self, device_id: str, playlist_id: str) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/play",
+            params={"device_id": device_id},
+            json={"context_uri": f"spotify:playlist:{playlist_id}"},
+        )
+
+    async def start_playlist_at_track(self, device_id: str, playlist_id: str, track_uri: str) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player/play",
+            params={"device_id": device_id},
+            json={
+                "context_uri": f"spotify:playlist:{playlist_id}",
+                "offset": {"uri": track_uri},
+            },
+        )
+
