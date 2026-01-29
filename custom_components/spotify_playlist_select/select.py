@@ -136,10 +136,9 @@ class SpotifyPlaylistTrackSelect(CoordinatorEntity[SpotifyCoordinator], SelectEn
         play_mode = self.entry.data.get(CONF_PLAY_MODE, PLAY_MODE_PLAY)
 
         if play_mode == PLAY_MODE_PLAY:
-            await api.start_playback(device_id, uri)
+            await api.start_playlist_context(device_id, self.playlist.id, uri)
             return
 
         if play_mode == PLAY_MODE_QUEUE_PLAY:
-            await api.add_to_queue(device_id, uri)
-            await api.start_playback(device_id, uri)
+            await api.start_playlist_context(device_id, self.playlist.id, uri)
             return

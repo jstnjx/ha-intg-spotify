@@ -95,6 +95,18 @@ class SpotifyApi:
             json={"uris": [track_uri]},
         )
 
+    async def start_playlist_context(self, device_id: str, playlist_id: str, track_uri: str) -> None:
+        await self._request(
+            "PUT",
+            f"https://api.spotify.com/v1/me/player/play",
+            params={"device_id": device_id},
+            json={
+                "context_uri": f"spotify:playlist:{playlist_id}",
+                "offset": {"uri": track_uri},
+            },
+        )
+
+
     async def add_to_queue(self, device_id: str, track_uri: str) -> None:
         await self._request(
             "POST",
