@@ -8,6 +8,13 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from .api import SpotifyApi
 from .const import DOMAIN, PLATFORMS
 from .coordinator import SpotifyCoordinator
+from .services import async_setup_services
+
+
+SERVICES_SETUP = "services_setup"
+
+async def _update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
@@ -22,7 +29,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await oauth.async_ensure_token_valid()
     api = SpotifyApi(session, oauth.token["access_token"])
 
-    coordinator = SpotifyCoordinator(hass, api)
+    coordinator = SpotifyCoordinator(hass, api, oauth)
     await coordinator.async_config_entry_first_refresh()
 
     hass.data.setdefault(DOMAIN, {})
@@ -32,6 +39,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         "coordinator": coordinator,
         "selected_device_id": None,
     }
+
+    if not hass.data[DOMAIN].get(SERVICES_SETUP):
+        await async_setup_services(hass)
+        hass.data[DOMAIN][SERVICES_SETUP] = True
+
+    entry.async_on_unload(entry.add_update_listener(_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True

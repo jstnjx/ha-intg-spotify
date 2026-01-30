@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Spotify Playlist Select",
+        "description": "Choisissez le comportement de lecture. Les identifiants OAuth Spotify se configurent dans Home Assistant via Paramètres → Appareils et services → Identifiants d'application.",
+        "data": {
+          "play_mode": "Lors de la sélection d’un titre"
+        }
+      },
+      "playlists": {
+        "title": "Sélectionner des playlists",
+        "description": "Choisissez les playlists pour lesquelles créer des entités.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Sélectionner des playlists",
+        "description": "Choisissez les playlists pour lesquelles créer des entités.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
+      }
+    }
+  }
+}

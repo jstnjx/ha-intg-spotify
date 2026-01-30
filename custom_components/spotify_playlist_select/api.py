@@ -7,7 +7,11 @@ import aiohttp
 
 
 class SpotifyApiError(Exception):
-    pass
+    def __init__(self, status: int, body: str) -> None:
+        super().__init__(f"{status} {body}")
+        self.status = status
+        self.body = body
+
 
 
 @dataclass(frozen=True)
@@ -28,6 +32,14 @@ class SpotifyDevice:
     id: str
     name: str
     is_active: bool
+
+
+@dataclass(frozen=True)
+class SpotifyRecentItem:
+    uri: str
+    name: str
+    artists: str
+    played_at: str | None
 
 
 class SpotifyApi:
@@ -54,7 +66,7 @@ class SpotifyApi:
 
             if resp.status >= 400:
                 txt = await resp.text()
-                raise SpotifyApiError(f"{resp.status} {txt}")
+                raise SpotifyApiError(resp.status, txt)
 
             ctype = resp.headers.get("Content-Type", "")
             if "application/json" not in ctype.lower():
@@ -62,7 +74,6 @@ class SpotifyApi:
                 return {}
 
             return await resp.json()
-
 
     async def get_playlists(self) -> list[SpotifyPlaylist]:
         url = "https://api.spotify.com/v1/me/playlists?limit=50"
@@ -74,10 +85,11 @@ class SpotifyApi:
             url = data.get("next")
         return out
 
-    async def get_playlist_tracks(self, playlist_id: str) -> list[SpotifyTrack]:
+    async def get_playlist_tracks(self, playlist_id: str, limit_total: int = 128) -> list[SpotifyTrack]:
         url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks?limit=100"
         out: list[SpotifyTrack] = []
-        while url:
+
+        while url and len(out) < limit_total:
             data = await self._request("GET", url)
             for item in data.get("items", []):
                 t = item.get("track") or {}
@@ -87,7 +99,53 @@ class SpotifyApi:
                 name = t.get("name", "Unknown")
                 artists = ", ".join(a.get("name", "") for a in (t.get("artists") or [])) or "Unknown"
                 out.append(SpotifyTrack(uri=uri, name=name, artists=artists))
+                if len(out) >= limit_total:
+                    break
             url = data.get("next")
+
+        return out
+
+    async def get_saved_tracks(self, limit: int = 50) -> list[SpotifyTrack]:
+        url = "https://api.spotify.com/v1/me/tracks?limit=50"
+        out: list[SpotifyTrack] = []
+
+        while url and len(out) < limit:
+            data = await self._request("GET", url)
+            for item in data.get("items", []):
+                t = (item or {}).get("track") or {}
+                uri = t.get("uri")
+                if not uri:
+                    continue
+                name = t.get("name", "Unknown")
+                artists = ", ".join(a.get("name", "") for a in (t.get("artists") or [])) or "Unknown"
+                out.append(SpotifyTrack(uri=uri, name=name, artists=artists))
+                if len(out) >= limit:
+                    break
+            url = data.get("next")
+
+        return out
+
+    async def get_recently_played(self, limit: int = 50) -> list[SpotifyRecentItem]:
+        url = f"https://api.spotify.com/v1/me/player/recently-played?limit={min(limit, 50)}"
+        out: list[SpotifyRecentItem] = []
+
+        data = await self._request("GET", url)
+        for item in data.get("items", []):
+            t = (item or {}).get("track") or {}
+            uri = t.get("uri")
+            if not uri:
+                continue
+            name = t.get("name", "Unknown")
+            artists = ", ".join(a.get("name", "") for a in (t.get("artists") or [])) or "Unknown"
+            out.append(
+                SpotifyRecentItem(
+                    uri=uri,
+                    name=name,
+                    artists=artists,
+                    played_at=item.get("played_at"),
+                )
+            )
+
         return out
 
     async def get_devices(self) -> list[SpotifyDevice]:
@@ -178,5 +236,12 @@ class SpotifyApi:
                 "context_uri": f"spotify:playlist:{playlist_id}",
                 "offset": {"uri": track_uri},
             },
+        )
+
+    async def transfer_playback(self, device_id: str, play: bool = True) -> None:
+        await self._request(
+            "PUT",
+            "https://api.spotify.com/v1/me/player",
+            json={"device_ids": [device_id], "play": play},
         )
 

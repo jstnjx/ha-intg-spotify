@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Spotify Playlist Select",
+        "description": "Wähle das Wiedergabeverhalten. Die Spotify-OAuth-Zugangsdaten werden in Home Assistant unter Einstellungen → Geräte & Dienste → Anwendungszugangsdaten konfiguriert.",
+        "data": {
+          "play_mode": "Beim Auswählen eines Titels"
+        }
+      },
+      "playlists": {
+        "title": "Playlists auswählen",
+        "description": "Wähle die Playlists aus, für die Entitäten erstellt werden sollen.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Playlists auswählen",
+        "description": "Wähle die Playlists aus, für die Entitäten erstellt werden sollen.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
+      }
+    }
+  }
+}

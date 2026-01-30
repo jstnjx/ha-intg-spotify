@@ -10,5 +10,4 @@ AUTHORIZATION_SERVER = AuthorizationServer(
 
 
 async def async_get_authorization_server(hass: HomeAssistant) -> AuthorizationServer:
-    """Return the Authorization Server for Spotify."""
     return AUTHORIZATION_SERVER

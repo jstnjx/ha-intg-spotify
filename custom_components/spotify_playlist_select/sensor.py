@@ -10,6 +10,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import DOMAIN
 from .coordinator import SpotifyCoordinator
+from .device import spotify_device_info
 
 
 async def async_setup_entry(
@@ -108,3 +109,7 @@ class SpotifyPlaybackSensor(CoordinatorEntity[SpotifyCoordinator], SensorEntity)
         data["playlists"] = [{"id": p.id, "name": p.name} for p in playlists]
 
         return data
+
+    @property
+    def device_info(self):
+        return spotify_device_info(self.entry.entry_id)

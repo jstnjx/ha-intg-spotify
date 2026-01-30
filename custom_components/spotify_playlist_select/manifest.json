@@ -1,7 +1,7 @@
 {
   "domain": "spotify_playlist_select",
   "name": "Spotify Playlist Select",
-  "version": "1.0.1",
+  "version": "1.1.2",
   "documentation": "https://github.com/jstnjx/ha-intg-spotify",
   "issue_tracker": "https://github.com/jstnjx/ha-intg-spotify/issues",
   "codeowners": ["@jstnjx"],

@@ -1,0 +1,63 @@
+play_playlist:
+  name: Play playlist
+  description: Start playing a playlist by id or name.
+  fields:
+    playlist_id:
+      name: Playlist ID
+      description: Spotify playlist id.
+      example: "37i9dQZF1DXcBWIGoYBM5M"
+      selector:
+        text:
+    playlist_name:
+      name: Playlist name
+      description: Spotify playlist name (must match exactly; duplicates not supported).
+      example: "My Favorites"
+      selector:
+        text:
+    device_id:
+      name: Device ID
+      description: Spotify Connect device id. If omitted, uses currently selected device.
+      selector:
+        text:
+
+play_track_in_playlist:
+  name: Play track in playlist
+  description: Start playing a playlist at a specific track.
+  fields:
+    playlist_id:
+      name: Playlist ID
+      selector:
+        text:
+    track_uri:
+      name: Track URI
+      example: "spotify:track:3n3Ppam7vgaVa1iaRUc9Lp"
+      selector:
+        text:
+    device_id:
+      name: Device ID
+      selector:
+        text:
+
+queue_track:
+  name: Queue track
+  description: Add a track to the queue (optionally play next).
+  fields:
+    track_uri:
+      name: Track URI
+      selector:
+        text:
+    device_id:
+      name: Device ID
+      description: If omitted, uses currently selected device.
+      selector:
+        text:
+    play_now:
+      name: Play now
+      description: If true, skip to the queued track immediately.
+      default: false
+      selector:
+        boolean:
+
+refresh_library:
+  name: Refresh library
+  description: Reload playlists and tracks.

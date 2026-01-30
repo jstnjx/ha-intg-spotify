@@ -1,9 +1,23 @@
 {
   "config": {
     "step": {
-      "user": {
-        "title": "Spotify Playlist Select",
-        "description": "Enter Spotify developer app credentials and choose playback behavior."
+      "playlists": {
+        "title": "Select playlists",
+        "description": "Choose which playlists should get their own entities.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Select playlists",
+        "description": "Choose which playlists should get their own entities.",
+        "data": {
+          "selected_playlist_ids": "Playlists"
+        }
       }
     }
   }

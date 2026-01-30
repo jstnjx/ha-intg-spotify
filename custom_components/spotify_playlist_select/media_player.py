@@ -1,24 +1,20 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Any, Optional
 
 from homeassistant.components.media_player import MediaPlayerEntity, MediaPlayerEntityFeature
-from homeassistant.components.media_player.const import RepeatMode
-from homeassistant.components.media_player.const import MediaPlayerState
-from homeassistant.components.media_player.const import MediaType
+from homeassistant.components.media_player.const import MediaPlayerState, MediaType, RepeatMode
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from homeassistant.util import dt as dt_util
-from homeassistant.exceptions import HomeAssistantError
-from time import monotonic
 
-
-
-from .const import DOMAIN
+from .api import SpotifyApiError
+from .const import DOMAIN, CONF_SELECTED_PLAYLIST_IDS
 from .coordinator import SpotifyCoordinator
-
+from .device import spotify_device_info
 
 def _device_label(name: str, device_id: str) -> str:
     return f"{name} [{device_id[:6]}]"
@@ -54,28 +50,44 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
         self.hass = hass
         self.entry = entry
         self._attr_unique_id = f"{entry.entry_id}_media_player"
+
         self._last_command_ts: float = 0.0
         self._debounce_seconds: float = 0.5
 
-    def _debounce(self) -> None:
+    def _debounce(self) -> bool:
         now = monotonic()
         if now - self._last_command_ts < self._debounce_seconds:
-            raise HomeAssistantError("Command ignored (debounced)")
+            return False
         self._last_command_ts = now
-
-
+        return True
 
     def _runtime(self) -> dict[str, Any]:
         return self.hass.data[DOMAIN][self.entry.entry_id]
 
     def _selected_device_id(self) -> Optional[str]:
-        return self._runtime().get("selected_device_id")
+        val = self._runtime().get("selected_device_id")
+        return val if isinstance(val, str) else None
 
     async def _refresh_token(self) -> None:
         oauth = self._runtime()["oauth"]
         await oauth.async_ensure_token_valid()
         api = self._runtime()["api"]
         api.set_token(oauth.token["access_token"])
+
+    async def _call_spotify(self, func, *args, **kwargs) -> None:
+        await self._refresh_token()
+        api = self._runtime()["api"]
+
+        try:
+            await func(api, *args, **kwargs)
+        except SpotifyApiError as err:
+            if getattr(err, "status", None) == 403:
+                await self.coordinator.async_request_refresh()
+                return
+            raise
+        finally:
+            await self.coordinator.async_request_refresh()
+
 
     @property
     def sound_mode_list(self) -> list[str] | None:
@@ -92,15 +104,34 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
     async def async_select_sound_mode(self, sound_mode: str) -> None:
         if not self._debounce():
             return
+
+        device_id: str | None = None
         for d in self.coordinator.data.devices:
             if sound_mode == _device_label(d.name, d.id):
-                self._runtime()["selected_device_id"] = d.id
-                self.async_write_ha_state()
-                return
+                device_id = d.id
+                break
+
+        if not device_id:
+            return
+
+        async def _do(api, device_id):
+            await api.transfer_playback(device_id, play=True)
+
+        await self._call_spotify(_do, device_id)
+
+        self._runtime()["selected_device_id"] = device_id
+        self.async_write_ha_state()
+
 
     @property
     def source_list(self) -> list[str] | None:
-        return [p.name for p in (self.coordinator.data.playlists or [])]
+        selected = self.entry.options.get(CONF_SELECTED_PLAYLIST_IDS) or self.entry.data.get(CONF_SELECTED_PLAYLIST_IDS, [])
+        selected_set = set(selected or [])
+
+        if not selected_set:
+            return []
+
+        return [p.name for p in (self.coordinator.data.playlists or []) if p.id in selected_set]
 
     @property
     def source(self) -> str | None:
@@ -108,7 +139,7 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
         ctx = (player.get("context") or {})
         if ctx.get("type") != "playlist":
             return None
-        uri = ctx.get("uri")  
+        uri = ctx.get("uri") 
         if not uri:
             return None
         playlist_id = uri.split(":")[-1]
@@ -122,14 +153,18 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
         if not device_id:
             return
 
-        pl = next((p for p in self.coordinator.data.playlists if p.name == source), None)
+        selected = self.entry.options.get(CONF_SELECTED_PLAYLIST_IDS) or self.entry.data.get(CONF_SELECTED_PLAYLIST_IDS, [])
+        selected_set = set(selected or [])
+
+        pl = next((p for p in self.coordinator.data.playlists if p.name == source and (not selected_set or p.id in selected_set)), None,)
+
         if not pl:
             return
 
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.start_playlist(device_id, pl.id)
-        await self.coordinator.async_request_refresh()
+        async def _do(api, device_id, playlist_id):
+            await api.start_playlist(device_id, playlist_id)
+
+        await self._call_spotify(_do, device_id, pl.id)
 
     @property
     def state(self) -> MediaPlayerState | None:
@@ -182,14 +217,30 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
 
     @property
     def media_position(self) -> int | None:
-        prog_ms = (self.coordinator.data.player or {}).get("progress_ms")
-        return int(prog_ms / 1000) if prog_ms is not None else None
+        player = self.coordinator.data.player or {}
+        prog_ms = player.get("progress_ms")
+        if prog_ms is None:
+            return None
+
+        pos = int(prog_ms / 1000)
+
+        dur = self.media_duration
+        if dur is not None:
+            pos = max(0, min(pos, dur))
+
+        return pos
 
     @property
     def media_position_updated_at(self):
         if self.media_position is None:
             return None
-        return dt_util.utcnow()
+
+        player = self.coordinator.data.player or {}
+        ts = player.get("timestamp")
+        if not ts:
+            return self.coordinator.last_update_success
+
+        return dt_util.utc_from_timestamp(ts / 1000)
 
 
     @property
@@ -213,54 +264,63 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
     async def async_media_play(self) -> None:
         if not self._debounce():
             return
+
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.resume(device_id)
-        await self.coordinator.async_request_refresh()
+        if not device_id:
+            return
+
+        async def _do(api, device_id):
+            await api.transfer_playback(device_id, play=True)
+
+            await api.resume(device_id)
+
+        await self._call_spotify(_do, device_id)
+
 
     async def async_media_pause(self) -> None:
         if not self._debounce():
             return
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.pause(device_id)
-        await self.coordinator.async_request_refresh()
+
+        async def _do(api, device_id):
+            await api.pause(device_id)
+
+        await self._call_spotify(_do, device_id)
 
     async def async_media_next_track(self) -> None:
         if not self._debounce():
             return
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.next_track(device_id)
-        await self.coordinator.async_request_refresh()
+
+        async def _do(api, device_id):
+            await api.next_track(device_id)
+
+        await self._call_spotify(_do, device_id)
 
     async def async_media_previous_track(self) -> None:
         if not self._debounce():
             return
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.previous_track(device_id)
-        await self.coordinator.async_request_refresh()
+
+        async def _do(api, device_id):
+            await api.previous_track(device_id)
+
+        await self._call_spotify(_do, device_id)
 
     async def async_set_shuffle(self, shuffle: bool) -> None:
         if not self._debounce():
             return
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
-        await api.set_shuffle(shuffle, device_id)
-        await self.coordinator.async_request_refresh()
+
+        async def _do(api, shuffle, device_id):
+            await api.set_shuffle(shuffle, device_id)
+
+        await self._call_spotify(_do, shuffle, device_id)
 
     async def async_set_repeat(self, repeat: RepeatMode) -> None:
         if not self._debounce():
             return
         device_id = self._selected_device_id()
-        await self._refresh_token()
-        api = self._runtime()["api"]
 
         if repeat == RepeatMode.ONE:
             state = "track"
@@ -269,8 +329,15 @@ class SpotifyPlaylistMediaPlayer(CoordinatorEntity[SpotifyCoordinator], MediaPla
         else:
             state = "off"
 
-        await api.set_repeat(state, device_id)
-        await self.coordinator.async_request_refresh()
+        async def _do(api, state, device_id):
+            await api.set_repeat(state, device_id)
+
+        await self._call_spotify(_do, state, device_id)
+
+    @property
+    def device_info(self):
+        return spotify_device_info(self.entry.entry_id)
+
 
     @callback
     def _handle_coordinator_update(self) -> None:
