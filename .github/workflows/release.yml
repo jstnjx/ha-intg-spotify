@@ -1,0 +1,47 @@
+name: Build HACS release archive
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: write
+
+jobs:
+  build-release-archive:
+    name: Build and upload HACS ZIP
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out released version
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Verify release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          MANIFEST_VERSION="$(python3 -c 'import json; print(json.load(open("custom_components/spotify_playlist_select/manifest.json", encoding="utf-8"))["version"])')"
+          TAG_VERSION="${RELEASE_TAG#v}"
+
+          if [[ "$MANIFEST_VERSION" != "$TAG_VERSION" ]]; then
+            echo "manifest.json version ($MANIFEST_VERSION) does not match release tag ($RELEASE_TAG)."
+            exit 1
+          fi
+
+      - name: Create HACS integration archive
+        run: |
+          set -euo pipefail
+          cd custom_components/spotify_playlist_select
+          zip -r "${GITHUB_WORKSPACE}/spotify_playlist_select.zip" . \
+            -x "*/__pycache__/*" "*.pyc" "*.pyo" ".DS_Store"
+
+      - name: Upload archive to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            spotify_playlist_select.zip \
+            --clobber

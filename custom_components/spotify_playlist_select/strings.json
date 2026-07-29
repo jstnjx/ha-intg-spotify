@@ -7,7 +7,14 @@
         "data": {
           "selected_playlist_ids": "Playlists"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect Spotify",
+        "description": "Your Spotify authorization has expired. Continue to authorize Spotify again."
       }
+    },
+    "abort": {
+      "reauth_successful": "Spotify was reconnected successfully."
     }
   },
   "options": {
@@ -19,6 +26,10 @@
           "selected_playlist_ids": "Playlists"
         }
       }
+    },
+    "abort": {
+      "reauth_required": "Spotify authorization has expired. A reauthentication flow has been started.",
+      "oauth_error": "Spotify authorization could not be refreshed. Try again later."
     }
   }
 }

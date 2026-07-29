@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import logging
+from collections.abc import Mapping
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.config_entries import SOURCE_REAUTH
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
@@ -75,8 +77,36 @@ class ConfigFlow(config_entry_oauth2_flow.AbstractOAuth2FlowHandler, domain=DOMA
         self.logger.debug("OAuth scopes requested: %s", self.scopes)
         return await super().async_step_auth(user_input)
 
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ):
+        """Start reauthentication for an expired Spotify authorization."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ):
+        """Ask the user to authorize Spotify again."""
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reauth_confirm",
+                data_schema=vol.Schema({}),
+            )
+
+        reauth_entry = self._get_reauth_entry()
+        self._pending = dict(reauth_entry.data)
+        return await self.async_step_pick_implementation()
+
     async def async_oauth_create_entry(self, data: dict[str, Any]):
         self._pending.update(data)
+
+        if self.source == SOURCE_REAUTH:
+            reauth_entry = self._get_reauth_entry()
+            return self.async_update_reload_and_abort(
+                reauth_entry,
+                data_updates=self._pending,
+            )
+
         return await self.async_step_playlists()
 
     async def async_step_playlists(self, user_input: dict[str, Any] | None = None):
@@ -129,7 +159,13 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
             self.hass, self.entry
         )
         oauth = config_entry_oauth2_flow.OAuth2Session(self.hass, self.entry, implementation)
-        await oauth.async_ensure_token_valid()
+        try:
+            await oauth.async_ensure_token_valid()
+        except config_entry_oauth2_flow.OAuth2TokenRequestReauthError:
+            self.entry.async_start_reauth(self.hass)
+            return self.async_abort(reason="reauth_required")
+        except config_entry_oauth2_flow.OAuth2TokenRequestError:
+            return self.async_abort(reason="oauth_error")
 
         api = SpotifyApi(session, oauth.token["access_token"])
         playlists = await api.get_playlists()
