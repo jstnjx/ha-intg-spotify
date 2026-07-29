@@ -1,9 +1,6 @@
 {
   "domain": "spotify_playlist_select",
   "name": "Spotify Playlist Select",
-  "version": "1.1.4",
-  "documentation": "https://github.com/jstnjx/ha-intg-spotify",
-  "issue_tracker": "https://github.com/jstnjx/ha-intg-spotify/issues",
   "codeowners": [
     "@jstnjx"
   ],
@@ -11,6 +8,9 @@
   "dependencies": [
     "application_credentials"
   ],
+  "documentation": "https://github.com/jstnjx/ha-intg-spotify",
   "iot_class": "cloud_polling",
-  "requirements": []
+  "issue_tracker": "https://github.com/jstnjx/ha-intg-spotify/issues",
+  "requirements": [],
+  "version": "1.1.4"
 }

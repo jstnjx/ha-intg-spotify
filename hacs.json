@@ -1,10 +1,7 @@
 {
   "name": "Spotify Playlist Select",
   "content_in_root": false,
-  "domains": [
-    "spotify_playlist_select"
-  ],
+  "filename": "spotify_playlist_select.zip",
   "homeassistant": "2026.1.0",
-  "zip_release": true,
-  "filename": "spotify_playlist_select.zip"
+  "zip_release": true
 }
