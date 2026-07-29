@@ -1,155 +1,267 @@
-# Spotify Playlist Select (Home Assistant)
+# Spotify Playlist Select
 
-Custom HACS integration for **Home Assistant 2026.1+** that adds Spotify playlist + device selection, a lightweight Spotify `media_player`, and a playback sensor using the Spotify Web API.
+[![HACS Default](https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge)](https://github.com/hacs/default)
+[![Hassfest](https://img.shields.io/github/actions/workflow/status/jstnjx/ha-intg-spotify/hassfest.yml?branch=main&label=Hassfest&style=for-the-badge)](https://github.com/jstnjx/ha-intg-spotify/actions/workflows/hassfest.yml)
+[![HACS Validation](https://img.shields.io/github/actions/workflow/status/jstnjx/ha-intg-spotify/hacs.yml?branch=main&label=HACS&style=for-the-badge)](https://github.com/jstnjx/ha-intg-spotify/actions/workflows/hacs.yml)
+[![GitHub Release](https://img.shields.io/github/v/release/jstnjx/ha-intg-spotify?style=for-the-badge)](https://github.com/jstnjx/ha-intg-spotify/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/jstnjx/ha-intg-spotify/total?style=for-the-badge)](https://github.com/jstnjx/ha-intg-spotify/releases)
+[![License](https://img.shields.io/github/license/jstnjx/ha-intg-spotify?style=for-the-badge)](LICENSE)
 
-Repository: https://github.com/jstnjx/ha-intg-spotify
+A Home Assistant custom integration that adds Spotify playlist selection, Spotify Connect device selection, a lightweight Spotify media player, and playback sensors using the Spotify Web API.
 
-> Not affiliated with or endorsed by Spotify.
+> **Not affiliated with or endorsed by Spotify.**
 
 ---
 
 ## Features
 
-### Setup (UI / Config Flow)
-- Uses Home Assistant **Config Flow**
-- Uses **Application Credentials** (Spotify OAuth2)
-- **Single Spotify account** (the integration enforces a single configured entry)
-
-During setup you can choose playback behavior for the playlist track selects:
-- **playlist select → song plays** (plays the selected track, then continues through the playlist)
-- **playlist select → queue + play** (queues the selected track and plays it next, then continues through the playlist)
-
-### Entities
-
-#### `select` entities
-- **Spotify Connect device select**
-  - Lets you choose the active output device
-  - Options are dynamically populated from available Spotify Connect devices
-- **One playlist track select per playlist**
-  - Each playlist becomes a `select` entity
-  - Options are the tracks from that playlist (`Track — Artist`)
-  - Selecting a track triggers playback on the currently selected device
-
-#### `media_player` entity
-- `play`, `pause`
-- `next`, `previous`
-- `shuffle`, `repeat`
-- **Sound mode list** = Spotify Connect devices (selects the active device for this integration)
-- **Source list** = playlists (selecting a source starts playing that playlist)
-- Displays standard metadata (title, artist, album, artwork, duration/position)
-
-> The media player includes a small command debounce to reduce Spotify “restriction violated” errors on rapid clicks.
-
-#### `sensor` entity
-- A playback sensor (`Spotify Playback`) with a simple state (`idle`, `paused`, `playing`)
-- Exposes useful Spotify information as attributes, including:
-  - selected device id
-  - available devices (list)
-  - playback state (shuffle/repeat/progress)
-  - current track metadata + artwork URL
-  - current context (playlist/album/etc)
-  - cached playlists (list)
+- Native Home Assistant Config Flow
+- Application Credentials (OAuth2)
+- One Spotify account per Home Assistant instance
+- Spotify Connect device selection
+- Playlist track selection
+- Lightweight Spotify `media_player`
+- Playback status sensor
+- Automatic OAuth token refresh
+- Configurable playback behavior
+- Fully compatible with HACS
 
 ---
 
-## Installation (HACS)
+## Compatibility
 
-1. In Home Assistant, open **HACS → Integrations**
-2. Click the menu (⋮) → **Custom repositories**
-3. Add this repository URL:
-   - `https://github.com/jstnjx/ha-intg-spotify`
-4. Category: **Integration**
-5. Install, then **restart Home Assistant**
+| Component | Version |
+|-----------|---------|
+| Home Assistant | 2026.1.0+ |
+| Installation | HACS / Manual |
+| Spotify Account | Premium |
+| Authentication | OAuth2 (Application Credentials) |
 
 ---
 
-## Spotify App / OAuth Setup (Application Credentials)
+## Installation
 
-This integration uses Home Assistant’s **Application Credentials** UI.
+### HACS (Recommended)
 
-### 1) Create a Spotify Developer App
-- Go to: https://developer.spotify.com/dashboard
-- Create an app
-- Copy **Client ID** and **Client Secret**
+1. Open **HACS → Integrations**
+2. Click **⋮ → Custom repositories**
+3. Add
 
-### 2) Configure the Redirect URI in Spotify
-Add this Redirect URI in the Spotify app settings:
+```
+https://github.com/jstnjx/ha-intg-spotify
+```
 
-`https://<YOUR_HOME_ASSISTANT_URL>/auth/external/callback`
+Category:
 
-Examples:
-- `https://homeassistant.example.com/auth/external/callback`
-- `https://<nabu-casa-url>/auth/external/callback`
+```
+Integration
+```
 
-> The redirect URI must match exactly.
+4. Install the integration.
+5. Restart Home Assistant.
 
-### 3) Add Application Credentials in Home Assistant
-- **Settings → Devices & services → Application Credentials**
-- Add credentials for **Spotify Playlist Select**
-- Enter Client ID / Client Secret
+---
 
-### 4) Add the integration
-- **Settings → Devices & services → Add integration**
-- Search for **Spotify Playlist Select**
-- Choose your playback mode
-- Select the Application Credential
-- Log in to Spotify and approve permissions
+### Manual
 
-**Required scopes**
-This integration requests:
+Download the latest release and copy
+
+```
+custom_components/spotify_playlist_select
+```
+
+to
+
+```
+config/custom_components/
+```
+
+Restart Home Assistant afterwards.
+
+---
+
+## Spotify OAuth Setup
+
+### 1. Create a Spotify Developer App
+
+Create an application on the Spotify Developer Dashboard:
+
+https://developer.spotify.com/dashboard
+
+Copy the:
+
+- Client ID
+- Client Secret
+
+---
+
+### 2. Configure the Redirect URI
+
+Add the following redirect URI to your Spotify application:
+
+```
+https://<YOUR_HOME_ASSISTANT_URL>/auth/external/callback
+```
+
+Example:
+
+```
+https://homeassistant.example.com/auth/external/callback
+```
+
+or
+
+```
+https://<your-nabu-casa-url>/auth/external/callback
+```
+
+The redirect URI **must match exactly**.
+
+---
+
+### 3. Configure Application Credentials
+
+Navigate to
+
+**Settings → Devices & Services → Application Credentials**
+
+Add credentials for **Spotify Playlist Select** using the Client ID and Client Secret.
+
+---
+
+### 4. Add the Integration
+
+Go to
+
+**Settings → Devices & Services → Add Integration**
+
+Select **Spotify Playlist Select**, choose your playback mode and authorize Spotify.
+
+Required Spotify scopes:
+
 - `playlist-read-private`
 - `playlist-read-collaborative`
 - `user-read-playback-state`
 - `user-modify-playback-state`
 
-If you change scopes in code, you must remove:
-- the config entry,
-- the application credential,
-- and the Spotify app authorization (Spotify Account → Manage apps),
-then re-auth.
+---
+
+## Entities
+
+### Select Entities
+
+| Entity | Description |
+|---------|-------------|
+| Spotify Connect Device | Selects the active playback device |
+| Playlist Track Select | One entity per playlist containing all tracks |
+
+Selecting a track immediately starts playback on the selected device.
 
 ---
 
-## How playback works
+### Media Player
 
-### Track selects (per playlist)
-- **Play mode**: starts playback in the *playlist context* at the selected track (so it continues through the playlist).
-- **Queue + play mode**:
-  - If Spotify has an active player: sets the playlist context, queues the selected track, and skips to it.
-  - If no active player is available: falls back to starting the playlist at the selected track.
+Provides:
 
-### Media player playlist “Source”
-- Selecting a playlist from `source_list` starts that playlist on the selected device.
+- Play / Pause
+- Next / Previous
+- Shuffle
+- Repeat
+- Playlist selection (`source_list`)
+- Device selection (`sound_mode`)
+- Album artwork
+- Metadata
+- Playback progress
 
-### Device selection
-- The integration stores a “selected device id” internally.
-- Device select (`select`) and media player `sound_mode` both update that selected device.
+A small command debounce reduces Spotify "restriction violated" errors caused by rapid repeated commands.
 
 ---
 
-## Notes / Limitations
+### Playback Sensor
 
-- Very large playlists can make `select` entities heavy (many options).
-- Spotify device names can be duplicated; the UI appends a short id.
-- Spotify playback commands may fail with “restriction violated” depending on device/account state; rapid repeated button presses can trigger this.
-- The integration polls Spotify (default 15s) to keep devices and player state up to date.
+State:
+
+- Playing
+- Paused
+- Idle
+
+Attributes include:
+
+- Selected device
+- Available devices
+- Current track
+- Album artwork
+- Playlist / Context
+- Shuffle
+- Repeat
+- Progress
+- Cached playlists
+
+---
+
+## Playback Modes
+
+### Play
+
+Starts playback at the selected track within the playlist.
+
+Playback continues normally through the playlist.
+
+---
+
+### Queue + Play
+
+If an active player exists:
+
+- Switch playlist
+- Queue selected track
+- Skip to queued track
+
+Otherwise it falls back to standard playlist playback.
+
+---
+
+## Notes
+
+- Large playlists create large Select entities.
+- Duplicate Spotify device names automatically receive a short identifier.
+- Spotify playback commands may occasionally return **restriction violated** depending on the current playback state.
+- Playback state is refreshed approximately every **15 seconds**.
 
 ---
 
 ## Troubleshooting
 
-### “Permissions missing” / 401
-You did not grant the required Spotify scopes. Remove:
-1. the integration entry,
-2. the application credential,
-3. the Spotify authorization (Spotify Account → Manage apps),
-then re-add and re-auth.
+### Permissions Missing / 401
 
-### No devices listed
-Spotify Connect devices only appear if they are online and available to your account. Open Spotify on the device once.
+Remove:
+
+- Integration
+- Application Credentials
+- Spotify authorization (Spotify Account → Manage Apps)
+
+Then add the integration again.
 
 ---
 
-## Support / Issues
-- Issues: https://github.com/jstnjx/ha-intg-spotify/issues
-- Please include logs and your Home Assistant version (2026.1+).
+### No Spotify Devices
+
+Spotify Connect devices only appear while they are online.
+
+Open Spotify once on the target device before refreshing.
+
+---
+
+## Support
+
+- **Issues:** https://github.com/jstnjx/ha-intg-spotify/issues
+- Please include:
+  - Home Assistant version
+  - Integration version
+  - Relevant logs
+
+---
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
