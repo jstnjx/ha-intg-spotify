@@ -80,6 +80,13 @@ class SpotifyCoordinator(DataUpdateCoordinator[SpotifyData]):
                 player=player,
             )
 
+        except (
+            config_entry_oauth2_flow.OAuth2TokenRequestReauthError,
+            config_entry_oauth2_flow.OAuth2TokenRequestTransientError,
+        ):
+            # Let Home Assistant's DataUpdateCoordinator translate OAuth failures
+            # into reauthentication or retry behavior.
+            raise
         except Exception as err:
             raise UpdateFailed(str(err)) from err
 

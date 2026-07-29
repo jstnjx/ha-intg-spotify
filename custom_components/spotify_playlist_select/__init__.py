@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_entry_oauth2_flow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
@@ -26,7 +27,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     oauth = config_entry_oauth2_flow.OAuth2Session(hass, entry, implementation)
 
-    await oauth.async_ensure_token_valid()
+    try:
+        await oauth.async_ensure_token_valid()
+    except config_entry_oauth2_flow.OAuth2TokenRequestReauthError as err:
+        raise ConfigEntryAuthFailed("Spotify authorization has expired; reauthentication is required") from err
+    except config_entry_oauth2_flow.OAuth2TokenRequestError as err:
+        raise ConfigEntryNotReady("Unable to refresh the Spotify access token") from err
+
     api = SpotifyApi(session, oauth.token["access_token"])
 
     coordinator = SpotifyCoordinator(hass, api, oauth)
